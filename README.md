@@ -1,110 +1,65 @@
-# Venue Outreach
+# Password Gate (Next.js App Router)
 
-A small internal tool for researching and contacting music/entertainment venues on
-behalf of Classical Guitar Ceremonies. Built with Next.js (App Router), Vercel
-Postgres, and the Anthropic API (web search) for venue discovery.
+Drop-in password protection for a Next.js App Router project. No user
+accounts — just one shared password, checked server-side.
 
-This is a personal, single-user tool — there is no login/auth.
+## Files
 
-## Features
-
-- **Dashboard** — sortable/filterable table of venues, inline status editing,
-  CSV export.
-- **Search Profiles** — save free-text search criteria and re-run them on demand
-  ("Run now"). Each run asks Claude to break the criteria into several narrower
-  web searches (e.g. per city/county) for better coverage, then dedupes results
-  against existing venues by name + city before inserting new ones as `New`.
-- **Draft Email** — generates an editable pitch email per venue (venue name is
-  filled in automatically). Nothing is ever sent without an explicit click on
-  **Send**.
-- **Send** — sends via Gmail SMTP from `info@classicalguitarceremonies.com`,
-  automatically appending your business address and an opt-out line. Sets the
-  venue's status to `Contacted` and records the date. Venues marked
-  **Opted Out** are excluded from sending (and shown grayed out on the
-  dashboard) but are never deleted.
-
-## Tech stack
-
-- Next.js 16 (App Router, TypeScript, Tailwind CSS)
-- Postgres via the `pg` driver, reading `POSTGRES_URL` — compatible with a
-  Postgres database provisioned through the Vercel Storage tab (Neon-backed)
-- `@anthropic-ai/sdk` for venue research (web search tool)
-- `nodemailer` for Gmail SMTP sending
-
-## Setup
-
-### 1. Provision Postgres on Vercel
-
-1. Open your project in the Vercel dashboard → **Storage** tab.
-2. Click **Create Database**, choose **Postgres** (this provisions a Neon-backed
-   Postgres database through the Vercel Marketplace integration).
-3. Follow the prompts to create it, then **Connect** it to this project. Vercel
-   will automatically add `POSTGRES_URL` (and related `POSTGRES_*` variables)
-   to your project's environment variables for all environments
-   (Production/Preview/Development).
-4. No manual migration step is needed — the app creates its two tables
-   (`venues`, `search_profiles`) automatically on first request if they don't
-   already exist.
-
-For local development, run `vercel env pull .env.local` after linking the
-project with `vercel link`, or copy the `POSTGRES_URL` value from the Vercel
-dashboard into a local `.env.local` (see `.env.example`).
-
-### 2. Set the remaining environment variables
-
-In Vercel → Project Settings → Environment Variables, add:
-
-| Variable | Description |
-| --- | --- |
-| `ANTHROPIC_API_KEY` | API key from the [Anthropic Console](https://console.anthropic.com/). Powers "Run now" venue research. |
-| `GMAIL_USER` | The Gmail address used to authenticate SMTP sending. |
-| `GMAIL_APP_PASSWORD` | A 16-character [Gmail App Password](https://myaccount.google.com/apppasswords) for that account (requires 2-Step Verification). Not your regular Gmail password. |
-| `BUSINESS_ADDRESS` | Plain-text mailing address appended to the footer of every outreach email. |
-
-Emails are sent **from** `info@classicalguitarceremonies.com`. For this to
-land correctly (and not get flagged), configure `GMAIL_USER`'s Gmail account
-to send as that address: Gmail Settings → **Accounts** → **Send mail as** →
-add `info@classicalguitarceremonies.com` and verify it, or simply use a Gmail
-account/Workspace mailbox whose address already is
-`info@classicalguitarceremonies.com`.
-
-None of these secrets are hardcoded anywhere in the codebase — they're read
-from `process.env` only.
-
-### 3. Deploy
-
-Push to your Git provider and import the project into Vercel as usual (or run
-`vercel deploy`). Once the Postgres database and the four environment
-variables above are set, the app is fully functional.
-
-### 4. Local development
-
-```bash
-npm install
-cp .env.example .env.local   # fill in values, or `vercel env pull .env.local`
-npm run dev
+```
+middleware.ts                  # gates every request except /login and /api/login
+lib/auth.ts                    # password check + signed session token helpers
+app/login/page.tsx             # the login screen
+app/login/login.module.css     # its styles
+app/api/login/route.ts         # server-side password check (only place APP_PASSWORD is read)
+.env.local.example             # documents the required env var
 ```
 
-If `POSTGRES_URL` isn't set, the app still boots and shows a "Database not
-connected" notice instead of crashing, so you can preview the UI shell before
-wiring up a database.
+## Install
 
-## Notes on the "Run now" search
+1. Copy `middleware.ts`, `lib/auth.ts`, `app/login/`, and `app/api/login/`
+   into your project, merging with any existing `app/` or `lib/` folders.
+   - If you already have a root `middleware.ts`, merge the two — you can't
+     have more than one.
+   - The imports in `app/api/login/route.ts` and `middleware.ts` use
+     relative paths (no `@/` alias assumed), so they work regardless of
+     your tsconfig path setup. Adjust them if you move the files.
+2. Add `APP_PASSWORD` to your environment. Locally, copy
+   `.env.local.example` to `.env.local` and set a real value:
 
-Runs use Claude Opus 5 with the web search tool. The model is instructed to
-issue several narrower searches (by city/county/venue type, as implied by your
-criteria) rather than one broad query, then returns a structured list of
-venues. Each result is deduped against existing venues by
-`lower(name) + lower(city)` before being inserted with status `New` and a
-reference back to the search profile that found it. A run can take one to a
-few minutes depending on how much the criteria expands into sub-searches; the
-route is configured with a 5-minute execution budget
-(`export const maxDuration = 300`), which requires a Vercel plan that supports
-extended function durations (Pro or higher) — on Hobby, reduce this or expect
-runs to be cut off around 60s.
+   ```
+   APP_PASSWORD=your-shared-password
+   ```
 
-## Schedule field
+   In production, set it in your host's environment variable settings
+   (e.g. Vercel project settings) — never commit it.
+3. Restart the dev server so the new env var and middleware take effect.
 
-Search profiles store a `schedule` field for forward-compatibility, but only
-`"manual"` is currently supported — profiles run only when you click
-**Run now**.
+## How it works
+
+- On submit, the login page POSTs the password to `/api/login`.
+- The API route hashes the submitted password and the real `APP_PASSWORD`
+  and compares the hashes in constant time, so response timing can't be
+  used to guess the password character-by-character.
+- On success, it sets an `httpOnly`, `SameSite=Lax` cookie containing a
+  token signed with HMAC-SHA256 (keyed by `APP_PASSWORD`). The password
+  itself never leaves the API route, and the cookie can't be read or
+  forged from client-side JS.
+- The cookie has no `maxAge`, so it's a browser-session cookie: it survives
+  page loads and navigation but clears when the browser closes. The signed
+  token also carries its own 24-hour expiry as a server-side backstop.
+- `middleware.ts` runs on the server for every request except `/login`,
+  `/api/login`, and static assets. It verifies the cookie's signature and
+  expiry and redirects to `/login` if it's missing or invalid. Because this
+  check happens in middleware, before any page or layout renders, there's
+  no way to reach app content by viewing page source or disabling
+  JavaScript — the gate is enforced server-side.
+
+## Notes
+
+- This protects the whole app equally, including any pages you add later —
+  the middleware matcher covers everything by default rather than
+  allow-listing specific routes.
+- This is a shared-password gate, not per-user authentication: anyone with
+  the password gets full access.
+- Consider adding rate limiting in front of `/api/login` (e.g. at your
+  host/WAF level) if you're concerned about brute-force attempts.
