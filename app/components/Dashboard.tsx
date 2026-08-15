@@ -7,7 +7,7 @@ import { draftEmail } from "@/lib/email-template";
 import DraftEmailModal from "./DraftEmailModal";
 import AddVenueModal from "./AddVenueModal";
 import { FindContactButton } from "../../components/FindContactButton";
-   import { FindMissingContactButton } from "../../components/FindMissingContactButton";
+import { FindMissingContactButton } from "../../components/FindMissingContactButton";
 
 type SortKey = "name" | "location" | "venue_type" | "capacity" | "status" | "date_added" | "date_last_contacted";
 
@@ -245,7 +245,7 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
               <Th label="Type" sortKey="venue_type" active={sortKey} dir={sortDir} onClick={toggleSort} />
               <Th label="Capacity" sortKey="capacity" active={sortKey} dir={sortDir} onClick={toggleSort} />
               <Th label="Status" sortKey="status" active={sortKey} dir={sortDir} onClick={toggleSort} />
-               <th className="px-3 py-2">Phone</th>
+              <th className="px-3 py-2">Phone</th>
               <th className="px-3 py-2">Email</th>
               <Th label="Added" sortKey="date_added" active={sortKey} dir={sortDir} onClick={toggleSort} />
               <Th
@@ -301,6 +301,8 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
                       ))}
                     </select>
                   </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-neutral-500">{v.phone ?? "—"}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-neutral-500">{v.email ?? "—"}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-neutral-500">{formatDate(v.date_added)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-neutral-500">
                     {formatDate(v.date_last_contacted)}
@@ -331,7 +333,7 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-neutral-400">
+                <td colSpan={11} className="px-3 py-8 text-center text-neutral-400">
                   No venues match your filters yet.
                 </td>
               </tr>
