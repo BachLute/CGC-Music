@@ -6,8 +6,9 @@ import { runContactLookupForVenue } from "../../../../../lib/venueContactService
 // fetch timeout, can take a while in the worst case.
 export const maxDuration = 60;
 
-export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
-  const result = await runContactLookupForVenue(params.id);
+export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const result = await runContactLookupForVenue(id);
 
   if (!result) {
     return NextResponse.json({ error: "Venue not found" }, { status: 404 });
