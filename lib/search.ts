@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createVenue, findVenueByNameCity } from "./venues";
 import { getProfile, updateProfile } from "./profiles";
 import type { RunResult } from "./types";
+import { enrichVenueContact } from "./enrichVenueContact";
 
 const MODEL = "claude-opus-5";
 const MAX_RESUMES = 3;
@@ -139,22 +140,28 @@ export async function runSearchProfile(profileId: number): Promise<RunResult> {
       continue;
     }
 
-    await createVenue({
-      name,
-      city,
-      state: typeof raw.state === "string" && raw.state.trim() ? raw.state.trim() : null,
-      venue_type:
-        typeof raw.venue_type === "string" && raw.venue_type.trim() ? raw.venue_type.trim() : null,
-      capacity: typeof raw.capacity === "number" ? Math.round(raw.capacity) : null,
-      phone: typeof raw.phone === "string" && raw.phone.trim() ? raw.phone.trim() : null,
-      email: typeof raw.email === "string" && raw.email.trim() ? raw.email.trim() : null,
-      website: typeof raw.website === "string" && raw.website.trim() ? raw.website.trim() : null,
-      notes: typeof raw.notes === "string" && raw.notes.trim() ? raw.notes.trim() : null,
-      status: "New",
-      source_profile_id: profile.id,
-      source_profile_name: profile.name,
-    });
-    result.inserted++;
+      const candidate = {
+        name,
+        city,
+        state: typeof raw.state === "string" && raw.state.trim() ? raw.state.trim() : null,
+        venue_type:
+          typeof raw.venue_type === "string" && raw.venue_type.trim() ? raw.venue_type.trim() : null,
+        capacity: typeof raw.capacity === "number" ? Math.round(raw.capacity) : null,
+        phone: typeof raw.phone === "string" && raw.phone.trim() ? raw.phone.trim() : null,
+        email: typeof raw.email === "string" && raw.email.trim() ? raw.email.trim() : null,
+        website: typeof raw.website === "string" && raw.website.trim() ? raw.website.trim() : null,
+        notes: typeof raw.notes === "string" && raw.notes.trim() ? raw.notes.trim() : null,
+      };
+
+      const enriched = await enrichVenueContact(candidate);
+
+      await createVenue({
+        ...enriched,
+        status: "New",
+        source_profile_id: profile.id,
+        source_profile_name: profile.name,
+      });
+      result.inserted++;
   }
 
   await updateProfile(profile.id, { last_run_at: new Date().toISOString() });
