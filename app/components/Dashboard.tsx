@@ -6,8 +6,8 @@ import { VENUE_STATUSES, type Venue, type VenueStatus } from "@/lib/types";
 import { draftEmail } from "@/lib/email-template";
 import DraftEmailModal from "./DraftEmailModal";
 import AddVenueModal from "./AddVenueModal";
-import FindContactButton from "../../components/FindContactButton";
-import FindMissingContactButton from "../../components/FindMissingContactButton";
+import { FindContactButton } from "../../components/FindContactButton";
+   import { FindMissingContactButton } from "../../components/FindMissingContactButton";
 
 type SortKey = "name" | "location" | "venue_type" | "capacity" | "status" | "date_added" | "date_last_contacted";
 
