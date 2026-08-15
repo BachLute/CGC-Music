@@ -245,6 +245,8 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
               <Th label="Type" sortKey="venue_type" active={sortKey} dir={sortDir} onClick={toggleSort} />
               <Th label="Capacity" sortKey="capacity" active={sortKey} dir={sortDir} onClick={toggleSort} />
               <Th label="Status" sortKey="status" active={sortKey} dir={sortDir} onClick={toggleSort} />
+               <th className="px-3 py-2">Phone</th>
+              <th className="px-3 py-2">Email</th>
               <Th label="Added" sortKey="date_added" active={sortKey} dir={sortDir} onClick={toggleSort} />
               <Th
                 label="Last Contacted"
