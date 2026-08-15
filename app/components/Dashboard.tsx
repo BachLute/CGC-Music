@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { VENUE_STATUSES, type Venue, type VenueStatus } from "@/lib/types";
 import { draftEmail } from "@/lib/email-template";
 import DraftEmailModal from "./DraftEmailModal";
 import AddVenueModal from "./AddVenueModal";
+import FindContactButton from "../../components/FindContactButton";
+import FindMissingContactButton from "../../components/FindMissingContactButton";
 
 type SortKey = "name" | "location" | "venue_type" | "capacity" | "status" | "date_added" | "date_last_contacted";
 
@@ -49,6 +52,7 @@ function downloadCsv(venues: Venue[]) {
 }
 
 export default function Dashboard({ initialVenues }: { initialVenues: Venue[] }) {
+  const router = useRouter();
   const [venues, setVenues] = useState<Venue[]>(initialVenues);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
@@ -59,6 +63,10 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
   const [showAdd, setShowAdd] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVenues(initialVenues);
+  }, [initialVenues]);
 
   const venueTypes = useMemo(() => {
     const set = new Set<string>();
@@ -150,11 +158,27 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
     setShowAdd(false);
   }
 
+  function handleContactFound(venueId: number, result: { phone?: string | null; email?: string | null; website?: string | null }) {
+    setVenues((vs) =>
+      vs.map((v) =>
+        v.id === venueId
+          ? {
+              ...v,
+              phone: v.phone || result.phone || v.phone,
+              email: v.email || result.email || v.email,
+              website: v.website || result.website || v.website,
+            }
+          : v
+      )
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">Venues</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <FindMissingContactButton onComplete={() => router.refresh()} />
           <button
             onClick={() => setShowAdd(true)}
             className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50"
@@ -243,7 +267,7 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
                 >
                   <td className="px-3 py-2 font-medium">
                     {v.website ? (
-                      <a
+                      
                         href={v.website}
                         target="_blank"
                         rel="noreferrer"
@@ -283,14 +307,22 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
                     {v.source_profile_name ?? "—"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {!optedOut && (
-                      <button
-                        onClick={() => setDraftFor(v)}
-                        className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs hover:bg-neutral-50"
-                      >
-                        Draft Email
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {!optedOut && (
+                        <button
+                          onClick={() => setDraftFor(v)}
+                          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs hover:bg-neutral-50"
+                        >
+                          Draft Email
+                        </button>
+                      )}
+                      {!optedOut && (
+                        <FindContactButton
+                          venueId={v.id}
+                          onResult={(result) => handleContactFound(v.id, result)}
+                        />
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
