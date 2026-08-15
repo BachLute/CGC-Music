@@ -9,7 +9,7 @@ import * as cheerio from "cheerio";
 import { searchWeb } from "./webSearch";
 
 export interface VenueContactLookup {
-  id: string | number;
+  id?: string | number;
   name: string;
   address?: string | null;
   website?: string | null;
