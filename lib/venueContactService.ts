@@ -7,7 +7,8 @@ import { findContactInfo, type ContactInfoResult, type VenueContactLookup } from
 interface VenueRow extends VenueContactLookup {
   id: string | number;
   name: string;
-  address: string | null;
+  city: string | null;
+  state: string | null;
   website: string | null;
 }
 
@@ -30,7 +31,7 @@ export async function runContactLookupForVenue(
   venueId: string | number
 ): Promise<(ContactInfoResult & { venueId: string | number; name: string }) | null> {
   const { rows } = await sql<VenueRow>`
-    SELECT id, name, address, website FROM venues WHERE id = ${venueId}
+    SELECT id, name, city, state, website FROM venues WHERE id = ${venueId}
   `;
   const venue = rows[0];
   if (!venue) return null;
@@ -46,7 +47,7 @@ export async function runContactLookupForMissingVenues(): Promise<
   Array<ContactInfoResult & { venueId: string | number; name: string; error?: boolean }>
 > {
   const { rows: venues } = await sql<VenueRow>`
-    SELECT id, name, address, website FROM venues
+    SELECT id, name, city, state, website FROM venues
     WHERE (phone IS NULL OR phone = '') OR (email IS NULL OR email = '')
   `;
 
