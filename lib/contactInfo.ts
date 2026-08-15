@@ -11,7 +11,8 @@ import { searchWeb } from "./webSearch";
 export interface VenueContactLookup {
   id?: string | number;
   name: string;
-  address?: string | null;
+  city?: string | null;
+  state?: string | null;
   website?: string | null;
 }
 
@@ -167,7 +168,8 @@ function findSubPageLinks($: ReturnType<typeof cheerio.load>, baseUrl: string): 
 async function findOfficialWebsite(venue: VenueContactLookup): Promise<string | null> {
   if (venue.website) return venue.website;
 
-  const query = `"${venue.name}" ${venue.address ?? ""} wedding venue official website`.trim();
+  const location = [venue.city, venue.state].filter(Boolean).join(", ");
+  const query = `"${venue.name}" ${location} wedding venue official website`.trim();
   const results = await searchWeb(query, 5);
   const candidate = results.find((r) => !isAggregator(r.url));
   return candidate?.url ?? null;
