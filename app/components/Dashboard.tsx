@@ -269,7 +269,7 @@ export default function Dashboard({ initialVenues }: { initialVenues: Venue[] })
                 >
                   <td className="px-3 py-2 font-medium">
                     {v.website ? (
-                      
+                      <a
                         href={v.website}
                         target="_blank"
                         rel="noreferrer"
